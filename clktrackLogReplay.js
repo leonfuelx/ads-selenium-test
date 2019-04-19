@@ -5,7 +5,7 @@ const password = 'JjxqP423VEJqACjztxWj';
 let date = new Date().toString().slice(0, 15);
 
 let browserStackAPI = `https://api.browserstack.com/automate/builds`,
-    buildId,
+    buildId = 'fcd6684159b5a5d3a839b0f51b25c00e52ee18b0',
     sessionId,
     networkLogs,
     failedSessions = [];
@@ -20,8 +20,9 @@ const options = {
 
 const getBuild = async url => {
     const data = await callApi(url);
+    console.log('data', data);
     for (let i = 0; i < data.length; i++) {
-        if (data[i].automation_build.name === date) {
+        if (data[i].automation_build.name === 'windows.1') {
             return data[i].automation_build.hashed_id;
         }
     }
@@ -57,7 +58,9 @@ const getSessionData = async arr => {
             }
             
             options.url = '';
+            console.log('============================================')
         } catch(e) {
+            console.log('getSessionData Error: ', e)
             continue;
         }
     }
@@ -70,13 +73,15 @@ const getNetworkData = async url => {
     let scriptExecutionTime = 0;
     for (let i = 0; i < entries.length; i++) {
         let fuelx = entries[i];
-        if((fuelx.request.url.includes('fuel451') || fuelx.request.url.includes('fuelx')) && (fuelx.response.status === 200 || fuelx.response.status === 302)) {
+        if(fuelx.request.url.includes('tr-dev.fuelx') && (fuelx.response.status === 200 || fuelx.response.status === 302)) {
             scriptExecutionTime += fuelx.time;
+            console.log('FuelX URL: ', fuelx.request.url, ' Status Code: ', fuelx.response.status);
         }
-        else if(fuelx.request.url.includes('fuel451') && (fuelx.response.status !== 200 || fuelx.response.status !== 302)) {
-            console.log('Request URL', fuelx.request.url)
-            console.log('Request status', fuelx.response.status)
-            return 'Pixel: Endpoint failure'
+        else if((fuelx.request.url.includes('tr-dev.fuelx'))) {
+            if (fuelx.response.status !== 200 || fuelx.response.status !== 302) {
+                console.log('Request URL ERROR: ', fuelx.request.url, 'Status Code: ', fuelx.response.status)
+                return 'Pixel: Endpoint failure'
+            }
         }
     }
 
@@ -103,7 +108,7 @@ const callApi = async url => {
 }
 
 const initApi = async () => {
-    buildId = await getBuild(options.url);
+    // buildId = await getBuild(options.url);
     options.url = `${browserStackAPI}/${buildId}.json`
     sessionIdArr = await getSession(options.url);
     getSessionData(sessionIdArr);
