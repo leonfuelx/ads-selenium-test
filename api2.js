@@ -1,14 +1,12 @@
 const axios = require('axios');
-const fs = require('fs');
-const nodemailer = require('nodemailer');
-
 const username = 'leonwang3';
 const password = 'JjxqP423VEJqACjztxWj';
 
 let date = new Date().toString().slice(0, 15);
 
 let browserStackAPI = `https://api.browserstack.com/automate/builds`,
-    buildId,
+    // buildId = [],
+    buildId = 'aa7274f0d602e6b1757409e6c5ce7d5867651731',
     sessionId,
     networkLogs,
     failedSessions = [];
@@ -24,9 +22,7 @@ const options = {
 const getBuild = async url => {
     const data = await callApi(url);
     for (let i = 0; i < data.length; i++) {
-        if (data[i].automation_build.name === date) {
-            return data[i].automation_build.hashed_id;
-        }
+        buildId.push(data[i].automation_build.hashed_id)
     }
 }
 
@@ -41,13 +37,15 @@ const getSession = async url => {
 } 
 
 
-const getSessionData = async arr => {
+const getSessionData = async (arr, buildid) => {
     for (let i = 0; i < arr.length; i++) {
+        const failDetails = {};
         try {
-            const failDetails = {};
             sessionId = arr[i];
-            options.url = `${browserStackAPI}/${buildId}/sessions/${sessionId}.json`
+            options.url = `${browserStackAPI}/${buildid}/sessions/${sessionId}.json`
             let data = await callApi(options.url);
+            logs = data.automation_session.logs;
+            consoleLogs = data.automation_session.browser_console_logs_url;
             networkLogs = `${data.automation_session.browser_url}/networklogs`
             console.log('SESSIONID', sessionId)
             let status = await getNetworkData(networkLogs);
@@ -58,15 +56,15 @@ const getSessionData = async arr => {
             }
             
             options.url = '';
+            console.log('============================================')
         } catch(e) {
+            console.log('getSessionData Error: ', sessionId)
+            failDetails[sessionId] = 'SessionData Error';
+            failedSessions.push(failDetails);
             continue;
         }
     }
-    if (!failedSessions.length) {
-        console.log(date, ': All Passed!')
-    } else {
-        console.log(date, failedSessions)
-    }
+    console.log('Session Logs', failedSessions)
 }
 
 const getNetworkData = async url => {
@@ -75,20 +73,21 @@ const getNetworkData = async url => {
     let scriptExecutionTime = 0;
     for (let i = 0; i < entries.length; i++) {
         let fuelx = entries[i];
-        if((fuelx.request.url.includes('fuel451.com') || fuelx.request.url.includes('fuelx.com')) && (fuelx.response.status === 200 || fuelx.response.status === 302)) {
+        if((fuelx.request.url.includes('fuelx.com') || fuelx.request.url.includes('fuel451.com')) && (fuelx.response.status === 200 || fuelx.response.status === 302)) {
             scriptExecutionTime += fuelx.time;
+            console.log('FuelX URL: ', fuelx.request.url, ' Status Code: ', fuelx.response.status);
         }
-        else if((fuelx.request.url.includes('fuel451.com') || fuelx.request.url.includes('fuelx.com')) && (fuelx.response.status !== 200 || fuelx.response.status !== 302) && !fuelx.request.url.includes('favicon')) {
-            console.log('Request URL', fuelx.request.url)
-            console.log('Request status', fuelx.response.status)
-            return `Pixel: Endpoint failure (URL:${fuelx.request.url}, STATUS:${fuelx.response.status})`
+        else if((fuelx.request.url.includes('fuelx.com') || fuelx.request.url.includes('fuel451.com')) && !fuelx.request.url.includes('favicon')) {
+            if (fuelx.response.status !== 200 || fuelx.response.status !== 302) {
+                console.log('Request URL ERROR: ', fuelx.request.url, 'Status Code: ', fuelx.response.status)
+                return 'Pixel: Endpoint failure'
+            }
         }
     }
 
     if(scriptExecutionTime > 5000) {
         console.log('Execution Time: ', scriptExecutionTime);
-        scriptExecutionTime = 0;
-        return 'Pixel: Execution too long';
+        return `Pixel: Execution ${scriptExecutionTime}`;
     } else if(scriptExecutionTime === 0) {
         return 'No Pixel';
     } else {
@@ -103,40 +102,25 @@ const callApi = async url => {
         const response = await axios.get(url, {auth: options.auth, headers: { 'Accept': 'application/json'}});
         return response.data;
     } catch (error) {
-        console.log('callAPI Error: ', error)
+        console.log('callAPI Error')
     }
 }
 
-const sendMessage = async (body) => {
-    let message = {
-        from:'leon.wang@fuelx.com',
-        to:'leon.wang@fuelx.com',
-        subject: `${date} Pixel Check Issues`,
-        html: `<p>${JSON.stringify(body)}</p>`
-    }
-
-    let transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: 'leon.wang@fuelx.com',
-            pass: 'kgxxfarkeueljzsb'
-        } 
-    });
-
-    transporter.sendMail(message, function(err, info) {
-        if(err)
-            console.log(err);
-        else
-            console.log(info);
-    })
-}
+// const initApi = async () => {
+//     await getBuild(options.url);
+//     let newBuildId = buildId.splice(0,4)
+//     for (let i = 0; i < newBuildId.length; i++) {
+//         options.url = `${browserStackAPI}/${newBuildId[i]}.json`
+//         sessionIdArr = await getSession(options.url);
+//         getSessionData(sessionIdArr, newBuildId[i]);
+//     }
+//     console.log(failedSessions)
+// }
 
 const initApi = async () => {
-    buildId = await getBuild(options.url);
-    options.url = `${browserStackAPI}/${buildId}.json`
+    options.url = `${browserStackAPI}/${buildId}.json`;
     sessionIdArr = await getSession(options.url);
-    await getSessionData(sessionIdArr);
-    sendMessage(failedSessions);
+    getSessionData(sessionIdArr, buildId)
 }
 
 initApi();

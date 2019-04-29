@@ -1,16 +1,26 @@
 const webdriver = require('selenium-webdriver');
 const mySql = require('./mysql.js');
+const util = require('util');
+
 require('./fast-selenium.js');
 
-mySql.connect();
+let activeClientsQuery = `SELECT distinct url FROM fuelAsset.tracking_pixel a join fuelAsset.campaign b on a.bid = b.bid where b.status = 1;`
+let queryExecution = util.promisify(mySql.query).bind(mySql);
+const activeClients = [];
 
-let activeClientsQuery = `SELECT * from enterprises`
+async function dbInit() {
+  try {
+    const rows = await queryExecution(activeClientsQuery);
+    rows.forEach(client => {
+      activeClients.push(client.url)
+    })
+  } finally {
+    mySql.end();
+    console.log('db closed')
+  }
+}
 
-mySql.query(activeClientsQuery, function (error, results, fields) {
-  if (error) throw error;
-})
-
-let date = new Date().toString().slice(0, 15)
+let date = new Date().toString().slice(0, 15);
 
 // Input capabilities
 const capabilities = {
@@ -26,17 +36,15 @@ const capabilities = {
   'browserstack.networkLogs': 'true',
   'acceptSslCerts': 'true',
   'browserstack.debug': 'true',
-  'browserstack.local': 'true'
 }
 
-const activeClients = ['trueandco.com', 'manscaped.com']
 
 
 async function appleMacTests() {
   try {
-    let appleOs = ['Mojave', 'High Sierra'];
-    let browser = ['Safari', 'Chrome'];
-    let chromeVersion = ['60', '72']
+    let appleOs = ['Mojave'];
+    let browser = ['Chrome'];
+    let chromeVersion = ['70']
   
     capabilities.os = 'OS X';
   
@@ -62,18 +70,19 @@ async function appleMacTests() {
               break;
           }
   
-          for (let z = 0; z < activeClients.length; z++) {
-            await buildDriver(activeClients[z])
-            // console.log(activeClients[z], capabilities)
+          for (let z = 0; z < noDuplicateSites.length; z++) {
+            // console.log(noDuplicateSites[z])
+            // await buildDriver(noDuplicateSites[z])
+            // console.log(noDuplicateSites[z], capabilities)
           }
         }
   
         if (browser[j] === 'Chrome') {
           for (let y = 0; y < chromeVersion.length; y++) {
             capabilities.browser_version = chromeVersion[y];
-            for (let z = 0; z < activeClients.length; z++) {
-              await buildDriver(activeClients[z])
-              // console.log(activeClients[z], capabilities)
+            for (let z = 0; z < noDuplicateSites.length; z++) {
+              await buildDriver(noDuplicateSites[z])
+              // console.log(noDuplicateSites[z], capabilities)
             }
           }
         }
@@ -94,7 +103,7 @@ async function buildDriver(client) {
       withCapabilities(capabilities).
       build();
   
-    await driver.get(`http://www.${client}`).then(function () {
+    await driver.get(`http://${client}`).then(function () {
       driver.getTitle().then(function (title) {
         console.log(title);
         setTimeout(() => { driver.quit(); }, 3000)
@@ -106,11 +115,26 @@ async function buildDriver(client) {
   }
 }
 
+let noDuplicateSites = [];
 
-function testInit() {
-  appleMacTests();
+async function testInit() {
+  await dbInit();
+
+  // remove 'www' and duplicates from sites
+  for (let i = 0; i < activeClients.length; i++) {
+    if (activeClients[i].includes('www')) {
+      activeClients[i] = activeClients[i].substr(4)
+    }
+  }
+
+  for (let z = 0; z < activeClients.length; z++) {
+    if (noDuplicateSites.indexOf(activeClients[z]) === -1 && !activeClients[z].includes('yahoo')) {
+      noDuplicateSites.push(activeClients[z])
+    }
+  }
+  console.log(noDuplicateSites);
+
+  await appleMacTests();
 }
 
 testInit();
-
-// const API = require('./api')
