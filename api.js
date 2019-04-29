@@ -5,7 +5,7 @@ const CronJob = require('cron').CronJob;
 const username = 'leonwang3';
 const password = 'JjxqP423VEJqACjztxWj';
 
-new CronJob('* * * * * *', function() {
+// new CronJob('* * * * * *', function() {
     
     let date = new Date().toString().slice(0, 15);
 
@@ -117,7 +117,7 @@ new CronJob('* * * * * *', function() {
     const sendMessage = async (body) => {
         let message = {
             from:'leon.wang@fuelx.com',
-            to:'leon.wang@fuelx.com',
+            to:['leon.wang@fuelx.com', 'pradeep@fuelx.com'],
             subject: `${date} Pixel Check Issues`,
             html: `<p>${JSON.stringify(body)}</p>`
         }
@@ -146,7 +146,7 @@ new CronJob('* * * * * *', function() {
         sendMessage(failedSessions);
     }
     
-    // initApi();
+    initApi();
     
-}, null, true, 'America/Los_Angeles');
+// }, null, true, 'America/Los_Angeles');
 
