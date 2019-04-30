@@ -5,7 +5,7 @@ const CronJob = require('cron').CronJob;
 const username = 'leonwang3';
 const password = 'JjxqP423VEJqACjztxWj';
 
-// new CronJob('* * * * * *', function() {
+new CronJob('0 30 18 * * *', function() {
     
     let date = new Date().toString().slice(0, 15);
 
@@ -14,7 +14,7 @@ const password = 'JjxqP423VEJqACjztxWj';
         sessionId,
         networkLogs,
         client,
-        failedSessions = [];
+        failedSessions = '';
     
     const options = {
         url: `${browserStackAPI}.json`,
@@ -34,32 +34,27 @@ const password = 'JjxqP423VEJqACjztxWj';
     }
     
     const getSession = async url => {
-        tempArr = [];
+        sessionArr = [];
         let data = await callApi(url);
             data = data.build.sessions;
         for (let i = 0; i < data.length; i++) {
-            tempArr.push(data[i].automation_session.hashed_id);
+            sessionArr.push(data[i].automation_session.hashed_id);
         }
-        return tempArr;
+        return sessionArr;
     } 
     
     
     const getSessionData = async arr => {
         for (let i = 0; i < arr.length; i++) {
             try {
-                const failDetails = {};
                 sessionId = arr[i];
                 options.url = `${browserStackAPI}/${buildId}/sessions/${sessionId}.json`
                 let data = await callApi(options.url);
                 networkLogs = `${data.automation_session.browser_url}/networklogs`
-                console.log('SESSIONID', sessionId)
                 let status = await getNetworkData(networkLogs);
         
                 if (status) {
-                    failDetails[client] = {
-                        [sessionId]: status
-                    };
-                    failedSessions.push(failDetails);
+                    failedSessions+=`<br>${client}: ${status}`
                 }
                 
                 options.url = '';
@@ -68,9 +63,9 @@ const password = 'JjxqP423VEJqACjztxWj';
             }
         }
         if (!failedSessions.length) {
-            console.log(date, ': All Passed!')
+            sendMessage('All Clients Passed!')
         } else {
-            console.log(date, failedSessions)
+            sendMessage(failedSessions)
         }
     }
     
@@ -86,18 +81,14 @@ const password = 'JjxqP423VEJqACjztxWj';
                 scriptExecutionTime += fuelx.time;
             }
             else if((fuelx.request.url.includes('fuel451.com') || fuelx.request.url.includes('fuelx.com')) && (fuelx.response.status !== 200 || fuelx.response.status !== 302) && !fuelx.request.url.includes('favicon')) {
-                console.log('Request URL', fuelx.request.url)
-                console.log('Request status', fuelx.response.status)
-                return `Pixel: Endpoint failure (URL:${fuelx.request.url}, STATUS:${fuelx.response.status})`
+                return `Pixel: Endpoint failure (URL:${fuelx.request.url}, STATUS:${fuelx.response.status}) (${sessionId})`
             }
         }
     
         if(scriptExecutionTime > 3000) {
-            console.log('Execution Time: ', scriptExecutionTime);
-            scriptExecutionTime = 0;
-            return 'Pixel: Execution too long';
+            return `Pixel: Execution took ${scriptExecutionTime}ms (${sessionId})`;
         } else if(scriptExecutionTime === 0) {
-            return 'No Pixel';
+            return `No Pixel (${sessionId})`;
         } else {
             console.log('Execution Time: ', scriptExecutionTime);
         }
@@ -117,9 +108,9 @@ const password = 'JjxqP423VEJqACjztxWj';
     const sendMessage = async (body) => {
         let message = {
             from:'leon.wang@fuelx.com',
-            to:['leon.wang@fuelx.com', 'pradeep@fuelx.com'],
+            to:['leon.wang@fuelx.com'],
             subject: `${date} Pixel Check Issues`,
-            html: `<p>${JSON.stringify(body)}</p>`
+            html: `<p>${body}</p>`
         }
     
         let transporter = nodemailer.createTransport({
@@ -143,10 +134,9 @@ const password = 'JjxqP423VEJqACjztxWj';
         options.url = `${browserStackAPI}/${buildId}.json`
         sessionIdArr = await getSession(options.url);
         await getSessionData(sessionIdArr);
-        sendMessage(failedSessions);
     }
     
     initApi();
     
-// }, null, true, 'America/Los_Angeles');
+}, null, true, 'America/Los_Angeles');
 
