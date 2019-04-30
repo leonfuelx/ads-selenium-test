@@ -6,7 +6,7 @@ const CronJob = require('cron').CronJob;
 require('./fast-selenium.js');
 
 
-new CronJob('0 0 18 * * *', function() {
+// new CronJob('0 0 18 * * *', function() {
 
   let activeClientsQuery = `SELECT distinct url FROM fuelAsset.tracking_pixel a join fuelAsset.campaign b on a.bid = b.bid where b.status = 1;`
   let queryExecution = util.promisify(mySql.query).bind(mySql);
@@ -48,7 +48,7 @@ new CronJob('0 0 18 * * *', function() {
     'os_version': 'Mojave',
     'resolution': '1920x1080',
     'project': 'test',
-    'build': 'test42',
+    'build': 'test49',
     'browserstack.user': 'leonwang3',
     'browserstack.key': 'JjxqP423VEJqACjztxWj',
     'browserstack.networkLogs': 'true',
@@ -125,7 +125,7 @@ new CronJob('0 0 18 * * *', function() {
       await driver.get(`http://${client}`).then(function () {
         driver.getTitle().then(function (title) {
           console.log(title);
-          setTimeout(() => { driver.quit(); }, 3000)
+          setTimeout(() => { driver.quit(); }, 5000)
         })
       })
 
@@ -137,7 +137,10 @@ new CronJob('0 0 18 * * *', function() {
   async function testInit() {
     await dbInit();
     await appleMacTests();
+    setTimeout(function() {
+      require('./api.js');
+    }, 30000)
   }
 
   testInit();
-}, null, true, 'America/Los_Angeles');
+// }, null, true, 'America/Los_Angeles');

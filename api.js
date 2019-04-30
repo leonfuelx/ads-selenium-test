@@ -1,12 +1,10 @@
-const axios = require('axios');
-const nodemailer = require('nodemailer');
-const CronJob = require('cron').CronJob;
+module.exports = (async function() {
+    const axios = require('axios');
+    const nodemailer = require('nodemailer');
 
-const username = 'leonwang3';
-const password = 'JjxqP423VEJqACjztxWj';
-
-new CronJob('0 30 18 * * *', function() {
-    
+    const username = 'leonwang3';
+    const password = 'JjxqP423VEJqACjztxWj';
+        
     let date = new Date().toString().slice(0, 15);
 
     let browserStackAPI = `https://api.browserstack.com/automate/builds`,
@@ -27,7 +25,7 @@ new CronJob('0 30 18 * * *', function() {
     const getBuild = async url => {
         const data = await callApi(url);
         for (let i = 0; i < data.length; i++) {
-            if (data[i].automation_build.name === date) {
+            if (data[i].automation_build.name === 'test49') {
                 return data[i].automation_build.hashed_id;
             }
         }
@@ -51,6 +49,8 @@ new CronJob('0 30 18 * * *', function() {
                 options.url = `${browserStackAPI}/${buildId}/sessions/${sessionId}.json`
                 let data = await callApi(options.url);
                 networkLogs = `${data.automation_session.browser_url}/networklogs`
+                console.log('===========================================')
+                console.log('SESSIONID', sessionId)
                 let status = await getNetworkData(networkLogs);
         
                 if (status) {
@@ -74,21 +74,25 @@ new CronJob('0 30 18 * * *', function() {
         let entries = data.log.entries;
             client = entries[0].request.url;
         let scriptExecutionTime = 0;
+        let fuelXCalls = 0;
         for (let i = 0; i < entries.length; i++) {
             let fuelx = entries[i];
             if((fuelx.request.url.includes('fuel451.com') || fuelx.request.url.includes('fuelx.com')) && (fuelx.response.status === 200 || fuelx.response.status === 302)) {
                 console.log(fuelx.request.url)
+                fuelXCalls++;
                 scriptExecutionTime += fuelx.time;
             }
             else if((fuelx.request.url.includes('fuel451.com') || fuelx.request.url.includes('fuelx.com')) && (fuelx.response.status !== 200 || fuelx.response.status !== 302) && !fuelx.request.url.includes('favicon')) {
-                return `Pixel: Endpoint failure (URL:${fuelx.request.url}, STATUS:${fuelx.response.status}) (${sessionId})`
+                return `Pixel: Endpoint failure (URL:${fuelx.request.url}, STATUS:${fuelx.response.status}), (sessionid: ${sessionId})`
             }
         }
-    
-        if(scriptExecutionTime > 3000) {
-            return `Pixel: Execution took ${scriptExecutionTime}ms (${sessionId})`;
+        
+        if(fuelXCalls < 5) {
+            return `Pixel: All Endpoints not called (${fuelXCalls}/10 calls), (sessionid: ${sessionId})`
+        } else if(scriptExecutionTime > 3000) {
+            return `Pixel: Execution took too long (${scriptExecutionTime}ms), (sessionid: ${sessionId})`;
         } else if(scriptExecutionTime === 0) {
-            return `No Pixel (${sessionId})`;
+            return `No Pixel (sessionid: ${sessionId})`;
         } else {
             console.log('Execution Time: ', scriptExecutionTime);
         }
@@ -133,10 +137,10 @@ new CronJob('0 30 18 * * *', function() {
         buildId = await getBuild(options.url);
         options.url = `${browserStackAPI}/${buildId}.json`
         sessionIdArr = await getSession(options.url);
+        sessionIdArr = sessionIdArr.reverse();
         await getSessionData(sessionIdArr);
     }
     
     initApi();
-    
-}, null, true, 'America/Los_Angeles');
 
+})()
