@@ -6,7 +6,7 @@ const CronJob = require('cron').CronJob;
 require('./fast-selenium.js');
 
 
-// new CronJob('0 0 6 * * *', function() {
+// new CronJob('0 0 5,17 * * *', function() {
 
   let activeClientsQuery = `SELECT distinct url FROM fuelAsset.tracking_pixel a join fuelAsset.campaign b on a.bid = b.bid where b.status = 1;`
   let queryExecution = util.promisify(mySql.query).bind(mySql);
