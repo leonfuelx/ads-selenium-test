@@ -25,7 +25,7 @@ module.exports = (async function() {
     const getBuild = async url => {
         const data = await callApi(url);
         for (let i = 0; i < data.length; i++) {
-            if (data[i].automation_build.name === 'test49') {
+            if (data[i].automation_build.name === date) {
                 return data[i].automation_build.hashed_id;
             }
         }
