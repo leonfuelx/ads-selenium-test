@@ -77,7 +77,7 @@ module.exports = (async function() {
         let fuelXCalls = 0;
         for (let i = 0; i < entries.length; i++) {
             let fuelx = entries[i];
-            if((fuelx.request.url.includes('fuel451.com') || fuelx.request.url.includes('fuelx.com')) && (fuelx.response.status === 200 || fuelx.response.status === 302)) {
+            if((fuelx.request.url.includes('fuel451.com') || fuelx.request.url.includes('fuelx.com')) && (fuelx.response.status === 200 || fuelx.response.status === 302 || fuelx.response.status === 301)) {
                 console.log(fuelx.request.url)
                 fuelXCalls++;
                 scriptExecutionTime += fuelx.time;

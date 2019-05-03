@@ -27,10 +27,11 @@ require('./fast-selenium.js');
       }
 
       for (let z = 0; z < activeClients.length; z++) {
-        if (noDuplicateSites.indexOf(activeClients[z]) === -1 && !activeClients[z].includes('yahoo')) {
+        if (noDuplicateSites.indexOf(activeClients[z]) === -1 && !activeClients[z].includes('yahoo') && !activeClients[z].includes('au.yogaclub.com')) {
           noDuplicateSites.push(activeClients[z])
         }
       }
+    console.log('Live Clients: ');
     console.log(noDuplicateSites);
     } finally {
       mySql.end();
