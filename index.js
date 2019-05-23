@@ -1,38 +1,37 @@
 const webdriver = require('selenium-webdriver');
 const mySql = require('./mysql.js');
+
 const util = require('util');
 const CronJob = require('cron').CronJob;
 
 require('./fast-selenium.js');
 
 
-// new CronJob('0 0 5,17 * * *', function() {
+new CronJob('0 0 5 * * *', function() {
 
-  let activeClientsQuery = `SELECT distinct url FROM fuelAsset.tracking_pixel a join fuelAsset.campaign b on a.bid = b.bid where b.status = 1;`
+  let activeLandingPages = `select distinct clickurl from fuelData.bidding where campaignStatus = 4`
+
   let queryExecution = util.promisify(mySql.query).bind(mySql);
-  const activeClients = [];
-  const noDuplicateSites = [];
+  let noDuplicateSites = [];
 
   async function dbInit() {
     try {
-      const rows = await queryExecution(activeClientsQuery);
-      rows.forEach(client => {
-        activeClients.push(client.url)
-      })
-      // remove 'www' and duplicates from sites
-      for (let i = 0; i < activeClients.length; i++) {
-        if (activeClients[i].includes('www')) {
-          activeClients[i] = activeClients[i].substr(4)
-        }
-      }
+      let landingPages = await queryExecution(activeLandingPages)
+      landingPages = landingPages.map(el => el.clickurl);
 
-      for (let z = 0; z < activeClients.length; z++) {
-        if (noDuplicateSites.indexOf(activeClients[z]) === -1 && !activeClients[z].includes('yahoo') && !activeClients[z].includes('au.yogaclub.com')) {
-          noDuplicateSites.push(activeClients[z])
+      for (let i = 0; i < landingPages.length; i++) {
+        if (landingPages[i].indexOf('?') > 0) {
+          let index = landingPages[i].indexOf('?');
+          noDuplicateSites.push(landingPages[i].slice(0,index));
+        } else if (landingPages[i][landingPages[i].length-1] === '/') {
+          noDuplicateSites.push(landingPages[i].slice(0,landingPages[i].length-1))
+        } else {
+          noDuplicateSites.push(landingPages[i]);
         }
       }
-    console.log('Live Clients: ');
-    console.log(noDuplicateSites);
+      noDuplicateSites = Array.from(new Set([...noDuplicateSites]));
+      console.log('Live Clients: ');
+      console.log('No Duplicate Sites', noDuplicateSites);
     } finally {
       mySql.end();
       console.log('db closed')
@@ -91,7 +90,7 @@ require('./fast-selenium.js');
     
             for (let z = 0; z < noDuplicateSites.length; z++) {
               // console.log(noDuplicateSites[z])
-              // await buildDriver(noDuplicateSites[z])
+              await buildDriver(noDuplicateSites[z])
               // console.log(noDuplicateSites[z], capabilities)
             }
           }
@@ -99,7 +98,6 @@ require('./fast-selenium.js');
           if (browser[j] === 'Chrome') {
             for (let y = 0; y < chromeVersion.length; y++) {
               capabilities.browser_version = chromeVersion[y];
-              noDuplicateSites.length = 3;
               for (let z = 0; z < noDuplicateSites.length; z++) {
                 await buildDriver(noDuplicateSites[z])
                 // console.log(noDuplicateSites[z], capabilities)
@@ -111,7 +109,7 @@ require('./fast-selenium.js');
       }
 
     } catch(error) {
-      console.log('ERROR in AppleTests: ', error);
+      console.error('ERROR in AppleTests: ', error);
     }
 
   }
@@ -123,7 +121,7 @@ require('./fast-selenium.js');
         withCapabilities(capabilities).
         build();
     
-      await driver.get(`http://${client}`).then(function () {
+      await driver.get(`${client}`).then(function () {
         driver.getTitle().then(function (title) {
           console.log(title);
           setTimeout(() => { driver.quit(); }, 5000)
@@ -144,4 +142,4 @@ require('./fast-selenium.js');
   }
 
   testInit();
-// }, null, true, 'America/Los_Angeles');
+}, null, true, 'America/Los_Angeles');
